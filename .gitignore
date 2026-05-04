@@ -42,3 +42,6 @@ next-env.d.ts
 
 # project docs (local-only planning notes)
 /docs
+
+# scratch playground (local-only ORM experiments)
+/scratch
