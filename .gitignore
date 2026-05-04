@@ -45,3 +45,6 @@ next-env.d.ts
 
 # scratch playground (local-only ORM experiments)
 /scratch
+
+# blog drafts (local-only writeups)
+/blog
