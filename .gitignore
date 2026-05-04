@@ -48,3 +48,9 @@ next-env.d.ts
 
 # blog drafts (local-only writeups)
 /blog
+
+# local sqlite database (gen by drizzle-kit migrate)
+/local.db
+/local.db-journal
+/local.db-shm
+/local.db-wal
