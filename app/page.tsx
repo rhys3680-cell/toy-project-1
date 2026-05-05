@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { count } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { bookmarks } from "@/lib/db/schema";
@@ -14,6 +15,12 @@ export default async function Home() {
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Bookmark Manager
           </h1>
+          <Link
+            href="/bookmarks/new"
+            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            + 추가
+          </Link>
         </div>
       </header>
 
