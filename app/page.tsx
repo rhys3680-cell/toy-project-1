@@ -25,6 +25,9 @@ export default async function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-16">
+        {/* NOTE: count를 0이어도 항상 표시. DB 연결 + Server Component
+            동작의 시각적 검증 도구. 0/n 분기로 안 가르고 의식적 디자인.
+            docs/16 §3.4 사례 4. */}
         <div className="flex flex-col items-center gap-2 text-center">
           <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
             저장된 북마크 {bookmarkCount}개
