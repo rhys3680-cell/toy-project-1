@@ -38,7 +38,21 @@ export default async function Home() {
                 key={b.id}
                 className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-4">
+                  {b.image && (
+                    // NOTE: next/image 대신 <img> 사용. next/image는 도메인 화이트리스트가
+                    // 필수인데 북마크 매니저는 임의 외부 도메인을 받음 → 화이트리스트 부적합.
+                    // og:image URL은 lib/og.ts의 validateImageUrl에서 http/https 검증 끝.
+                    // referrerPolicy="no-referrer" — 외부 사이트에 우리 페이지 노출 최소화.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={b.image}
+                      alt=""
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                      className="h-20 w-32 flex-none rounded border border-zinc-200 bg-zinc-100 object-cover dark:border-zinc-800 dark:bg-zinc-800"
+                    />
+                  )}
                   <div className="min-w-0 flex-1">
                     <a
                       href={b.url}
@@ -48,6 +62,11 @@ export default async function Home() {
                     >
                       {b.title ?? b.url}
                     </a>
+                    {b.description && (
+                      <p className="mt-1 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">
+                        {b.description}
+                      </p>
+                    )}
                     <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
                       {b.url}
                     </p>
