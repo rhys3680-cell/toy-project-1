@@ -1,12 +1,8 @@
 import Link from "next/link";
-import { count } from "drizzle-orm";
-import { db } from "@/lib/db/client";
-import { bookmarks } from "@/lib/db/schema";
+import { listBookmarks } from "@/lib/db/queries";
 
 export default async function Home() {
-  const [{ value: bookmarkCount }] = await db
-    .select({ value: count() })
-    .from(bookmarks);
+  const items = await listBookmarks();
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -24,20 +20,41 @@ export default async function Home() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 py-16">
-        {/* NOTE: count를 0이어도 항상 표시. DB 연결 + Server Component
-            동작의 시각적 검증 도구. 0/n 분기로 안 가르고 의식적 디자인.
-            docs/16 §3.4 사례 4. */}
-        <div className="flex flex-col items-center gap-2 text-center">
-          <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-            저장된 북마크 {bookmarkCount}개
-          </p>
-          {bookmarkCount === 0 && (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              URL을 추가하면 여기에 표시됩니다.
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
+        {items.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+            <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+              아직 북마크가 없습니다.
             </p>
-          )}
-        </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              상단의 + 추가 버튼으로 첫 북마크를 등록해 보세요.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {items.map((b) => (
+              <li
+                key={b.id}
+                className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+              >
+                <a
+                  href={b.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                >
+                  {b.title ?? b.url}
+                </a>
+                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {b.url}
+                </p>
+                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                  {b.createdAt.toLocaleString("ko-KR")}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
       </main>
     </div>
   );
