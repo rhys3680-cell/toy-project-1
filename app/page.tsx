@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { listBookmarks } from "@/lib/db/queries";
+import { DeleteButton } from "./bookmarks/delete-button";
 
 export default async function Home() {
   const items = await listBookmarks();
@@ -37,20 +38,25 @@ export default async function Home() {
                 key={b.id}
                 className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
               >
-                <a
-                  href={b.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                >
-                  {b.title ?? b.url}
-                </a>
-                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                  {b.url}
-                </p>
-                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                  {b.createdAt.toLocaleString("ko-KR")}
-                </p>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={b.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                    >
+                      {b.title ?? b.url}
+                    </a>
+                    <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                      {b.url}
+                    </p>
+                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                      {b.createdAt.toLocaleString("ko-KR")}
+                    </p>
+                  </div>
+                  <DeleteButton id={b.id} />
+                </div>
               </li>
             ))}
           </ul>
