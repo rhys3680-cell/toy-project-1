@@ -63,25 +63,30 @@ export async function createBookmark(formData: FormData) {
 
     if (tagNames.length === 0) return;
 
-    // NOTE: 태그 upsert 패턴 — onConflictDoNothing으로 새 이름만 insert.
-    // returning()은 충돌 행은 안 돌려주므로 회수 못 함 → 별도 SELECT로 id 일괄 조회.
-    // v1 단일 사용자(userId NULL)라 (user_id, name) UNIQUE의 NULL 동작 함정 가능 —
-    // parseTagInput에서 입력 단계 dedupe로 회피.
-    await tx
-      .insert(tags)
-      .values(tagNames.map((name) => ({ userId: null, name })))
-      .onConflictDoNothing();
-
+    // NOTE: SELECT-then-INSERT 패턴. onConflictDoNothing은 NULL UNIQUE 함정으로
+    // v1 환경(user_id 항상 NULL)에선 무용지물이라 의식적으로 안 씀.
+    // DB 레벨엔 partial unique index(tags_null_user_name_unique)가 동시성 안전망.
+    // docs/08 §5, docs/09 (2026-05-06) 참조.
     const existing = await tx
       .select({ id: tags.id, name: tags.name })
       .from(tags)
       .where(and(isNull(tags.userId), inArray(tags.name, tagNames)));
 
-    if (existing.length > 0) {
-      await tx
-        .insert(bookmarkTags)
-        .values(existing.map((t) => ({ bookmarkId, tagId: t.id })));
+    const existingNames = new Set(existing.map((t) => t.name));
+    const newNames = tagNames.filter((n) => !existingNames.has(n));
+
+    let inserted: { id: number; name: string }[] = [];
+    if (newNames.length > 0) {
+      inserted = await tx
+        .insert(tags)
+        .values(newNames.map((name) => ({ userId: null, name })))
+        .returning({ id: tags.id, name: tags.name });
     }
+
+    const allIds = [...existing, ...inserted].map((t) => t.id);
+    await tx
+      .insert(bookmarkTags)
+      .values(allIds.map((tagId) => ({ bookmarkId, tagId })));
   });
 
   // NOTE: 순서 중요 — revalidatePath 먼저, redirect 나중.
