@@ -70,6 +70,18 @@ export default async function Home() {
                     <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
                       {b.url}
                     </p>
+                    {b.tags.length > 0 && (
+                      <ul className="mt-2 flex flex-wrap gap-1">
+                        {b.tags.map((t) => (
+                          <li
+                            key={t}
+                            className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+                          >
+                            {t}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                     <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
                       {b.createdAt.toLocaleString("ko-KR")}
                     </p>
