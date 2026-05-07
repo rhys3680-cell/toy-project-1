@@ -2,8 +2,17 @@ import Link from "next/link";
 import { listBookmarks } from "@/lib/db/queries";
 import { DeleteButton } from "./bookmarks/delete-button";
 
-export default async function Home() {
-  const items = await listBookmarks();
+export default async function Home({
+  searchParams,
+}: {
+  // NOTE: Next.js 16에서 searchParams는 Promise — await 필수.
+  // Server Component가 dynamic 진입점 의식하게 하는 의도적 변경.
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const query = typeof q === "string" ? q : "";
+  const items = await listBookmarks(query);
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -22,14 +31,54 @@ export default async function Home() {
       </header>
 
       <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-12">
+        {/* NOTE: GET 폼 + URL 쿼리 파라미터 — JS 없이도 동작, 새로고침/공유/뒤로가기에 상태 보존.
+            v2 로드맵 "URL 쿼리로 필터 상태 동기화"의 첫 적용. */}
+        <form method="GET" action="/" className="mb-6 flex gap-2">
+          <input
+            type="search"
+            name="q"
+            defaultValue={query}
+            placeholder="제목·URL·태그로 검색"
+            maxLength={100}
+            className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500"
+          />
+          <button
+            type="submit"
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            검색
+          </button>
+          {isSearching && (
+            <Link
+              href="/"
+              className="rounded-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              초기화
+            </Link>
+          )}
+        </form>
+
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-              아직 북마크가 없습니다.
-            </p>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
-              상단의 + 추가 버튼으로 첫 북마크를 등록해 보세요.
-            </p>
+            {isSearching ? (
+              <>
+                <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                  검색 결과가 없습니다.
+                </p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  키워드: {query}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
+                  아직 북마크가 없습니다.
+                </p>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  상단의 + 추가 버튼으로 첫 북마크를 등록해 보세요.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
