@@ -15,6 +15,13 @@
       "when": 1778040705157,
       "tag": "0001_add_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778134120288,
+      "tag": "0002_tags_null_user_partial_unique",
+      "breakpoints": true
     }
   ]
 }

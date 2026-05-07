@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `tags_null_user_name_unique` ON `tags` (`name`) WHERE "tags"."user_id" is null;

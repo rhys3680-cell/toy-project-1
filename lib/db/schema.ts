@@ -5,7 +5,7 @@ import {
   primaryKey,
   uniqueIndex,
 } from "drizzle-orm/sqlite-core";
-import { relations } from "drizzle-orm";
+import { isNull, relations } from "drizzle-orm";
 
 export const bookmarks = sqliteTable("bookmarks", {
   // NOTE: TEXT UUID (crypto.randomUUID) — 외부 노출 시 정보 누출/IDOR 방어.
@@ -35,12 +35,16 @@ export const tags = sqliteTable(
     name: text("name").notNull(),
   },
   (t) => [
-    // NOTE: (user_id, name)이 UNIQUE — 같은 사용자가 같은 이름 태그 못 만듦.
-    // userId가 NULL인 v1 단일 사용자 케이스에선 SQLite의 NULL 동작상
-    // NULL ≠ NULL이라 이론적으로 중복 가능. v1 단일 사용자 환경에선
-    // 앱 로직(소문자 정규화 + 입력 시 중복 제거)으로 방어.
-    // v3 인증 도입 시 userId NOT NULL이 되며 자연 해결.
+    // NOTE: (user_id, name) UNIQUE — v3 인증 도입 후 정상 작동.
+    // v1엔 user_id가 항상 NULL이라 NULL ≠ NULL 표준 동작으로 무용지물.
+    // docs/08 §5, docs/09 (2026-05-06 학습 항목) 참조.
     uniqueIndex("tags_user_id_name_unique").on(t.userId, t.name),
+    // NOTE: v1 NULL 함정 봉쇄용 partial unique index. user_id가 NULL일 때만
+    // name unique. v3에 user_id가 NOT NULL이 되면 이 index는 무용지물 → drop.
+    // 코드(SELECT-then-INSERT)와 함께 두 층 방어를 구성. 동시성 안전망 역할.
+    uniqueIndex("tags_null_user_name_unique")
+      .on(t.name)
+      .where(isNull(t.userId)),
   ],
 );
 
