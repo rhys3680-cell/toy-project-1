@@ -29,6 +29,13 @@
       "when": 1778305299021,
       "tag": "0003_add_auth_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1778307149041,
+      "tag": "0004_add_user_id_fk_cascade",
+      "breakpoints": true
     }
   ]
 }

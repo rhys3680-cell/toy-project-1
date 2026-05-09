@@ -2,13 +2,21 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, inArray, isNull } from "drizzle-orm";
+import { headers } from "next/headers";
+import { and, eq, inArray } from "drizzle-orm";
+import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
 import { bookmarks, bookmarkTags, tags } from "@/lib/db/schema";
 import { fetchOgMeta } from "@/lib/og";
 import { parseTagInput } from "@/lib/tags";
 
 export async function createBookmark(formData: FormData) {
+  // NOTE: 3층 방어의 마지막 — Server Action도 직접 POST 호출 가능하므로
+  // proxy/page 가드와 별개로 여기서도 세션 재검증. docs/19 §5.5.
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user?.id) throw new Error("unauthorized");
+  const userId = session.user.id;
+
   // NOTE: 5단계 서버 검증. HTML5 검증(type=url, required, maxLength)은
   // 클라이언트에서 우회 가능 (DevTools, curl, postman) → 서버 재검증 필수.
   // docs/13 §7.5, docs/16 §7.1 (함정 3 — 보안 취약 패턴).
@@ -54,6 +62,7 @@ export async function createBookmark(formData: FormData) {
   await db.transaction(async (tx) => {
     await tx.insert(bookmarks).values({
       id: bookmarkId,
+      userId,
       url,
       title: meta.title,
       description: meta.description,
@@ -63,14 +72,13 @@ export async function createBookmark(formData: FormData) {
 
     if (tagNames.length === 0) return;
 
-    // NOTE: SELECT-then-INSERT 패턴. onConflictDoNothing은 NULL UNIQUE 함정으로
-    // v1 환경(user_id 항상 NULL)에선 무용지물이라 의식적으로 안 씀.
-    // DB 레벨엔 partial unique index(tags_null_user_name_unique)가 동시성 안전망.
-    // docs/08 §5, docs/09 (2026-05-06) 참조.
+    // NOTE: SELECT-then-INSERT 패턴. user_id가 NOT NULL이 되어 (user_id, name) UNIQUE가
+    // 정상 작동하지만, 패턴은 그대로 유지 — onConflictDoNothing보다 의도가 명시적이고
+    // race condition 방어는 DB UNIQUE가 받쳐줌 (이중 안전망). docs/08 §5.
     const existing = await tx
       .select({ id: tags.id, name: tags.name })
       .from(tags)
-      .where(and(isNull(tags.userId), inArray(tags.name, tagNames)));
+      .where(and(eq(tags.userId, userId), inArray(tags.name, tagNames)));
 
     const existingNames = new Set(existing.map((t) => t.name));
     const newNames = tagNames.filter((n) => !existingNames.has(n));
@@ -79,7 +87,7 @@ export async function createBookmark(formData: FormData) {
     if (newNames.length > 0) {
       inserted = await tx
         .insert(tags)
-        .values(newNames.map((name) => ({ userId: null, name })))
+        .values(newNames.map((name) => ({ userId, name })))
         .returning({ id: tags.id, name: tags.name });
     }
 

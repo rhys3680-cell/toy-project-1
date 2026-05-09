@@ -20,7 +20,7 @@ export default async function Home({
 
   const { q } = await searchParams;
   const query = typeof q === "string" ? q : "";
-  const items = await listBookmarks(query);
+  const items = await listBookmarks(session.user.id, query);
   const isSearching = query.trim().length > 0;
 
   return (

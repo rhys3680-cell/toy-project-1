@@ -37,18 +37,21 @@ function searchClause(rawQuery: string) {
   );
 }
 
-// NOTE: v1엔 단일 사용자 가정이라 user_id 필터 없음.
-// v3 인증 도입 시 인자로 userId 받고 where(eq(bookmarks.userId, userId)) 추가.
-// AGENTS.md §Server Actions "Filter every query by user_id (IDOR defense)" 적용 시점.
+// NOTE: 인증 도입으로 userId 필수 인자화. AGENTS.md §Server Actions
+// "Filter every query by user_id (IDOR defense)" 정책 적용. 호출자(Server Component
+// /Action)가 session.user.id를 명시 전달 — 실수로 누락 시 컴파일 에러.
 //
 // Drizzle Relational Queries (db.query.bookmarks.findMany with: { ... }) 사용 —
 // bookmarks N개에 대해 태그 N번 SELECT하지 않고 한 번에 묶어 가져옴 (N+1 회피).
 // schema.ts의 relations() 정의가 이걸 가능하게 함. docs/13 §9 N+1 함정 항목 적용.
 export async function listBookmarks(
+  userId: string,
   query?: string,
 ): Promise<BookmarkWithTags[]> {
   const trimmed = query?.trim().slice(0, SEARCH_QUERY_MAX) ?? "";
-  const where = trimmed.length > 0 ? searchClause(trimmed) : undefined;
+  const userScope = eq(bookmarks.userId, userId);
+  const where =
+    trimmed.length > 0 ? and(userScope, searchClause(trimmed)) : userScope;
 
   const rows = await db.query.bookmarks.findMany({
     where,
