@@ -12,7 +12,9 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@better-auth/drizzle-adapter": "^1.6.9",
     "@libsql/client": "^0.17.3",
+    "better-auth": "^1.6.9",
     "drizzle-orm": "^0.45.2",
     "next": "16.2.4",
     "node-html-parser": "^7.1.0",

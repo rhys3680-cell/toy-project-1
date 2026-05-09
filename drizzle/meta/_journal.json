@@ -22,6 +22,13 @@
       "when": 1778134120288,
       "tag": "0002_tags_null_user_partial_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778305299021,
+      "tag": "0003_add_auth_tables",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,12 @@ import {
 } from "drizzle-orm/sqlite-core";
 import { isNull, relations } from "drizzle-orm";
 
+// NOTE: Better Auth 표준 테이블 (user, session, account, verification)을
+// 별도 파일에서 re-export. drizzle-kit이 한 schema.ts만 보면 되도록.
+// 분리 이유: Better Auth가 관리하는 표준 영역과 우리 도메인(bookmarks/tags)을
+// 시각적으로 분리. 미래 Better Auth 플러그인 추가 시 auth-schema.ts만 갱신.
+export { user, session, account, verification } from "./auth-schema";
+
 export const bookmarks = sqliteTable("bookmarks", {
   // NOTE: TEXT UUID (crypto.randomUUID) — 외부 노출 시 정보 누출/IDOR 방어.
   // docs/14 §3.4.
