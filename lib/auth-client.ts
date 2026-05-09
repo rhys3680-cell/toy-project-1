@@ -2,8 +2,15 @@
 // 다만 secret은 노출 안 됨 — baseURL 외엔 클라이언트 단에서 fetch만 함.
 import { createAuthClient } from "better-auth/react";
 
+// NOTE: NEXT_PUBLIC_BETTER_AUTH_URL 미설정 시 환경별 함정 — prod 도메인에서
+// localhost로 fetch 시도 → CORS. fallback 두지 않고 fail-fast로 환경변수 강제.
+// dev/prod 양쪽 .env에 명시. docs/15 §11.4, §11.6.
+if (!process.env.NEXT_PUBLIC_BETTER_AUTH_URL) {
+  throw new Error(
+    "NEXT_PUBLIC_BETTER_AUTH_URL is not set. Check .env.local or Vercel env.",
+  );
+}
+
 export const authClient = createAuthClient({
-  // NOTE: baseURL 명시 — production에선 BETTER_AUTH_URL 환경변수로 설정.
-  // 같은 도메인 배포 시 생략 가능하지만 의도 명시 차원에서 둠.
-  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL ?? "http://localhost:3000",
+  baseURL: process.env.NEXT_PUBLIC_BETTER_AUTH_URL,
 });
