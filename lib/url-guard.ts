@@ -9,15 +9,8 @@ import { lookup } from "node:dns/promises";
 // 한계: DNS rebinding 완벽 방어 안 됨 (검증 시점과 fetch 시점의 DNS 응답이 다를 수 있음).
 // redirect 후 최종 URL 재검증도 v1엔 안 함 — v3+ 인증 도입 시 강화.
 //
-// 회귀 재검증 케이스 (코드 변경 시 수동 확인):
-//   통과해야: https://example.com, http://example.com
-//   throw해야:
-//     - http://127.0.0.1, http://localhost (loopback)
-//     - http://169.254.169.254 (cloud metadata)
-//     - http://10.0.0.1, http://172.20.0.1, http://192.168.1.1 (private)
-//     - http://[::1] (IPv6 loopback)
-//     - file:///etc/passwd, javascript:alert(1), ftp://x (non-http)
-// 정식 단위 테스트는 v2 vitest 도입 시 추가.
+// 회귀 재검증: tests/url-guard.test.ts (vitest). IPv6 평탄화 + IPv4-mapped IPv6
+// 16진수 변환 함정이 거기 박제됨. 수동 확인 케이스 목록도 그 파일이 진실 소스.
 export async function assertSafeUrl(input: string): Promise<URL> {
   const url = new URL(input);
 
@@ -25,7 +18,9 @@ export async function assertSafeUrl(input: string): Promise<URL> {
     throw new Error("only http/https allowed");
   }
 
-  const host = url.hostname;
+  // NOTE: Node URL이 IPv6 hostname을 brackets 포함해 보관 — `[::1]`.
+  // node:net.isIP는 brackets 없이만 인식하니 평탄화. IPv4는 brackets 안 씀.
+  const host = url.hostname.replace(/^\[|\]$/g, "");
 
   // hostname이 IP면 직접 검증
   if (isIP(host)) {
@@ -63,10 +58,20 @@ function isPrivateOrLoopbackIp(ip: string): boolean {
   const lower = ip.toLowerCase();
   if (lower.startsWith("fc") || lower.startsWith("fd")) return true; // unique local
   if (lower.startsWith("fe80")) return true; // link-local
-  // IPv4-mapped IPv6 (::ffff:127.0.0.1 등)
+  // IPv4-mapped IPv6 — 두 표기 모두 처리:
+  //   ::ffff:127.0.0.1   (mixed dotted decimal)
+  //   ::ffff:7f00:1      (Node URL 정규화 후 16진수, 압축 포함)
   if (lower.startsWith("::ffff:")) {
-    const v4 = lower.slice(7);
-    if (isIP(v4) === 4) return isPrivateOrLoopbackIp(v4);
+    const tail = lower.slice(7);
+    if (isIP(tail) === 4) return isPrivateOrLoopbackIp(tail);
+    // 16진수 변환 시도 (예: "7f00:1" → "127.0.0.1")
+    const hexMatch = tail.match(/^([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (hexMatch) {
+      const high = Number.parseInt(hexMatch[1], 16);
+      const low = Number.parseInt(hexMatch[2], 16);
+      const dotted = `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
+      if (isIP(dotted) === 4) return isPrivateOrLoopbackIp(dotted);
+    }
   }
 
   return false;

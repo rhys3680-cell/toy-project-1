@@ -52,19 +52,9 @@ describe("assertSafeUrl — 직접 입력 IP의 사설/loopback 차단", () => {
     ["http://172.20.0.1", "private class B"],
     ["http://192.168.1.1", "private class C"],
     ["http://0.0.0.0", "wildcard"],
+    ["http://[::1]", "IPv6 loopback"],
   ])("%s (%s) 거부", async (url) => {
     await expect(assertSafeUrl(url)).rejects.toThrow(/private or loopback/);
-  });
-
-  // FIXME: IPv6 직접 입력 (http://[::1]) — Node URL이 hostname을 "[::1]"로 보관,
-  // node:net.isIP는 bracket 없이만 인식. 현재 우리 코드는 도메인 경로로 빠져
-  // dns.lookup 시도 → 실패. v1 시나리오에선 드물지만 함정.
-  // url-guard.ts에서 hostname의 [...] 제거 후 isIP 검사로 수정 필요.
-  // 이 테스트가 통과로 바뀔 때 FIXME 제거.
-  test.skip("http://[::1] (IPv6 loopback) 거부 — known issue", async () => {
-    await expect(assertSafeUrl("http://[::1]")).rejects.toThrow(
-      /private or loopback/,
-    );
   });
 
   test("172.15.x는 private 범위 밖 — 통과", async () => {
@@ -72,6 +62,14 @@ describe("assertSafeUrl — 직접 입력 IP의 사설/loopback 차단", () => {
     await expect(assertSafeUrl("http://172.15.0.1")).resolves.toBeInstanceOf(
       URL,
     );
+  });
+
+  test.each([
+    ["http://[::ffff:127.0.0.1]", "IPv4-mapped IPv6 loopback"],
+    ["http://[fc00::1]", "IPv6 unique local"],
+    ["http://[fe80::1]", "IPv6 link-local"],
+  ])("%s (%s) 거부", async (url) => {
+    await expect(assertSafeUrl(url)).rejects.toThrow(/private or loopback/);
   });
 });
 
