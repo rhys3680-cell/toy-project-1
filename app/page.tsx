@@ -1,6 +1,10 @@
 import Link from "next/link";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 import { listBookmarks } from "@/lib/db/queries";
 import { DeleteButton } from "./bookmarks/delete-button";
+import { SignOutButton } from "./sign-out-button";
 
 export default async function Home({
   searchParams,
@@ -9,6 +13,11 @@ export default async function Home({
   // Server Component가 dynamic 진입점 의식하게 하는 의도적 변경.
   searchParams: Promise<{ q?: string }>;
 }) {
+  // NOTE: proxy.ts의 쿠키 가드는 1차 방어. 여기서 Server 측 재검증 (DB 조회).
+  // docs/19 §5.5 3층 방어 패턴의 2층. 쿠키 존재 ≠ 세션 유효라 재검증 필수.
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) redirect("/login");
+
   const { q } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const items = await listBookmarks(query);
@@ -21,12 +30,30 @@ export default async function Home({
           <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
             Bookmark Manager
           </h1>
-          <Link
-            href="/bookmarks/new"
-            className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            + 추가
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/bookmarks/new"
+              className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              + 추가
+            </Link>
+            <div className="flex items-center gap-2">
+              {session.user.image && (
+                // NOTE: GitHub 아바타. img 사용 이유는 OG 썸네일과 동일 — 임의 외부 도메인.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={session.user.image}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="h-7 w-7 rounded-full border border-zinc-200 dark:border-zinc-800"
+                />
+              )}
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                {session.user.name ?? session.user.email}
+              </span>
+              <SignOutButton />
+            </div>
+          </div>
         </div>
       </header>
 
