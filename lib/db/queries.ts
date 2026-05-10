@@ -2,7 +2,7 @@
 // db 클라이언트가 server-only이므로 transitively 안전하긴 하지만,
 // 레이어 경계를 명시적으로 표시. AGENTS.md §Layering, docs/10.
 import "server-only";
-import { and, desc, eq, exists, like, or, sql } from "drizzle-orm";
+import { and, desc, eq, exists, like, or, sql, type SQL } from "drizzle-orm";
 import { db } from "./client";
 import { bookmarks, bookmarkTags, tags, type Bookmark } from "./schema";
 
@@ -11,6 +11,12 @@ import { bookmarks, bookmarkTags, tags, type Bookmark } from "./schema";
 export type BookmarkWithTags = Bookmark & { tags: string[] };
 
 const SEARCH_QUERY_MAX = 100;
+const TAG_NAME_MAX = 50;
+
+export type ListBookmarksOpts = {
+  query?: string;
+  tag?: string;
+};
 
 // NOTE: v1 검색 정책 (docs/13 Q13) — LIKE '%q%'. 데이터 적은 v1엔 충분.
 // 1000건 초과 또는 v3+에서 FTS5로 진화 (docs/13 §5.7).
@@ -37,24 +43,50 @@ function searchClause(rawQuery: string) {
   );
 }
 
+// NOTE: 태그 필터 — *정확 매치* (검색의 LIKE와 다름). 칩 클릭으로 들어오니
+// 정확한 이름 가정. EXISTS로 M:N 조인 + user_id 명시 — 다른 사용자의 같은
+// 이름 태그에 의도치 않게 매치되지 않게 (이중 안전: 우리 bookmarks도 user
+// 격리되어 있어 사실상 무관하지만 의도 명시).
+function tagClause(rawTag: string, userId: string) {
+  return exists(
+    db
+      .select({ x: sql`1` })
+      .from(bookmarkTags)
+      .innerJoin(tags, eq(tags.id, bookmarkTags.tagId))
+      .where(
+        and(
+          eq(bookmarkTags.bookmarkId, bookmarks.id),
+          eq(tags.userId, userId),
+          eq(tags.name, rawTag),
+        ),
+      ),
+  );
+}
+
 // NOTE: 인증 도입으로 userId 필수 인자화. AGENTS.md §Server Actions
 // "Filter every query by user_id (IDOR defense)" 정책 적용. 호출자(Server Component
 // /Action)가 session.user.id를 명시 전달 — 실수로 누락 시 컴파일 에러.
+//
+// opts 객체 — v2 이후 필터 추가 시 시그니처 안정. (이전엔 query: string 단일 인자)
 //
 // Drizzle Relational Queries (db.query.bookmarks.findMany with: { ... }) 사용 —
 // bookmarks N개에 대해 태그 N번 SELECT하지 않고 한 번에 묶어 가져옴 (N+1 회피).
 // schema.ts의 relations() 정의가 이걸 가능하게 함. docs/13 §9 N+1 함정 항목 적용.
 export async function listBookmarks(
   userId: string,
-  query?: string,
+  opts: ListBookmarksOpts = {},
 ): Promise<BookmarkWithTags[]> {
-  const trimmed = query?.trim().slice(0, SEARCH_QUERY_MAX) ?? "";
-  const userScope = eq(bookmarks.userId, userId);
-  const where =
-    trimmed.length > 0 ? and(userScope, searchClause(trimmed)) : userScope;
+  const trimmedQuery = opts.query?.trim().slice(0, SEARCH_QUERY_MAX) ?? "";
+  const trimmedTag = opts.tag?.trim().slice(0, TAG_NAME_MAX).toLowerCase() ?? "";
+
+  // NOTE: drizzle의 or/and가 빈 인자에 undefined 반환 가능 → SQL로 명시.
+  // 우리 호출은 항상 인자 있어 실제론 undefined 안 됨 (! 단언 안전).
+  const conditions: SQL[] = [eq(bookmarks.userId, userId)];
+  if (trimmedQuery.length > 0) conditions.push(searchClause(trimmedQuery)!);
+  if (trimmedTag.length > 0) conditions.push(tagClause(trimmedTag, userId));
 
   const rows = await db.query.bookmarks.findMany({
-    where,
+    where: and(...conditions),
     orderBy: [desc(bookmarks.createdAt)],
     with: {
       bookmarkTags: {
