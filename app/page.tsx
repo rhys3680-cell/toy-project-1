@@ -11,17 +11,38 @@ export default async function Home({
 }: {
   // NOTE: Next.js 16에서 searchParams는 Promise — await 필수.
   // Server Component가 dynamic 진입점 의식하게 하는 의도적 변경.
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string }>;
 }) {
   // NOTE: proxy.ts의 쿠키 가드는 1차 방어. 여기서 Server 측 재검증 (DB 조회).
   // docs/19 §5.5 3층 방어 패턴의 2층. 쿠키 존재 ≠ 세션 유효라 재검증 필수.
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
-  const { q } = await searchParams;
+  const { q, tag } = await searchParams;
   const query = typeof q === "string" ? q : "";
-  const items = await listBookmarks(session.user.id, query);
+  const activeTag = typeof tag === "string" ? tag : "";
+  const items = await listBookmarks(session.user.id, {
+    query,
+    tag: activeTag,
+  });
   const isSearching = query.trim().length > 0;
+  const isTagFiltering = activeTag.trim().length > 0;
+  const isFiltered = isSearching || isTagFiltering;
+
+  // NOTE: 카드 칩 클릭 시 *현재 검색어 보존하며 태그만 추가*. 태그 해제 시도 같음.
+  // tag만 있는 URL과 q+tag 동시 URL 둘 다 자연스러움.
+  const hrefForTag = (t: string) => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    params.set("tag", t);
+    return `/?${params.toString()}`;
+  };
+  const hrefWithoutTag = () => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    const qs = params.toString();
+    return qs.length > 0 ? `/?${qs}` : "/";
+  };
 
   return (
     <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -75,7 +96,7 @@ export default async function Home({
           >
             검색
           </button>
-          {isSearching && (
+          {isFiltered && (
             <Link
               href="/"
               className="rounded-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
@@ -85,15 +106,33 @@ export default async function Home({
           )}
         </form>
 
+        {isTagFiltering && (
+          <div className="mb-4 flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+            <span>태그 필터:</span>
+            <span className="rounded bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-900 dark:bg-zinc-700 dark:text-zinc-50">
+              {activeTag}
+            </span>
+            <Link
+              href={hrefWithoutTag()}
+              className="text-xs text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+              aria-label="태그 필터 해제"
+            >
+              ✕
+            </Link>
+          </div>
+        )}
+
         {items.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            {isSearching ? (
+            {isFiltered ? (
               <>
                 <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">
-                  검색 결과가 없습니다.
+                  조건에 맞는 북마크가 없습니다.
                 </p>
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  키워드: {query}
+                  {isSearching && `키워드: ${query}`}
+                  {isSearching && isTagFiltering && " · "}
+                  {isTagFiltering && `태그: ${activeTag}`}
                 </p>
               </>
             ) : (
@@ -148,14 +187,24 @@ export default async function Home({
                     </p>
                     {b.tags.length > 0 && (
                       <ul className="mt-2 flex flex-wrap gap-1">
-                        {b.tags.map((t) => (
-                          <li
-                            key={t}
-                            className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                          >
-                            {t}
-                          </li>
-                        ))}
+                        {b.tags.map((t) => {
+                          const isActive = t === activeTag;
+                          return (
+                            <li key={t}>
+                              <Link
+                                href={hrefForTag(t)}
+                                aria-current={isActive ? "true" : undefined}
+                                className={
+                                  isActive
+                                    ? "rounded bg-zinc-900 px-2 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
+                                    : "rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                                }
+                              >
+                                {t}
+                              </Link>
+                            </li>
+                          );
+                        })}
                       </ul>
                     )}
                     <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
