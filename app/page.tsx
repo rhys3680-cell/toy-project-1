@@ -2,7 +2,11 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
-import { listBookmarks } from "@/lib/db/queries";
+import {
+  countBookmarks,
+  DEFAULT_PAGE_SIZE,
+  listBookmarks,
+} from "@/lib/db/queries";
 import { DeleteButton } from "./bookmarks/delete-button";
 import { ReadButton, StarButton } from "./bookmarks/flag-button";
 import { SignOutButton } from "./sign-out-button";
@@ -12,26 +16,36 @@ export default async function Home({
 }: {
   // NOTE: Next.js 16에서 searchParams는 Promise — await 필수.
   // Server Component가 dynamic 진입점 의식하게 하는 의도적 변경.
-  searchParams: Promise<{ q?: string; tag?: string }>;
+  searchParams: Promise<{ q?: string; tag?: string; page?: string }>;
 }) {
   // NOTE: proxy.ts의 쿠키 가드는 1차 방어. 여기서 Server 측 재검증 (DB 조회).
   // docs/19 §5.5 3층 방어 패턴의 2층. 쿠키 존재 ≠ 세션 유효라 재검증 필수.
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) redirect("/login");
 
-  const { q, tag } = await searchParams;
+  const { q, tag, page: pageParam } = await searchParams;
   const query = typeof q === "string" ? q : "";
   const activeTag = typeof tag === "string" ? tag : "";
-  const items = await listBookmarks(session.user.id, {
-    query,
-    tag: activeTag,
-  });
+  // NOTE: page 파싱. 잘못된 입력(`abc`, `0`, `-1`)은 1로 fallback.
+  const parsedPage = Number.parseInt(pageParam ?? "", 10);
+  const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
+  const filterOpts = { query, tag: activeTag };
+
+  // NOTE: list + count 병렬. 같은 buildWhere 절을 두 쿼리가 공유하니 정합.
+  // docs/21 §3 SQL 흐름에 새 쿼리 1개 추가 (count).
+  const [items, total] = await Promise.all([
+    listBookmarks(session.user.id, { ...filterOpts, page }),
+    countBookmarks(session.user.id, filterOpts),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE));
   const isSearching = query.trim().length > 0;
   const isTagFiltering = activeTag.trim().length > 0;
   const isFiltered = isSearching || isTagFiltering;
 
   // NOTE: 카드 칩 클릭 시 *현재 검색어 보존하며 태그만 추가*. 태그 해제 시도 같음.
   // tag만 있는 URL과 q+tag 동시 URL 둘 다 자연스러움.
+  // 필터 변경 시 page는 *명시적으로 1로 리셋* — 다른 필터의 page=2가 의미 안 가짐.
   const hrefForTag = (t: string) => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
@@ -41,6 +55,15 @@ export default async function Home({
   const hrefWithoutTag = () => {
     const params = new URLSearchParams();
     if (query) params.set("q", query);
+    const qs = params.toString();
+    return qs.length > 0 ? `/?${qs}` : "/";
+  };
+  // NOTE: 페이지 이동 href — 현재 필터 보존, page만 변경. page=1은 생략 (canonical URL).
+  const hrefForPage = (n: number) => {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (activeTag) params.set("tag", activeTag);
+    if (n > 1) params.set("page", String(n));
     const qs = params.toString();
     return qs.length > 0 ? `/?${qs}` : "/";
   };
@@ -91,6 +114,9 @@ export default async function Home({
             maxLength={100}
             className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500"
           />
+          {/* NOTE: hidden tag — 검색 submit 시 활성 태그 필터 보존. page는 의도적
+              으로 빠뜨림 → 검색하면 1페이지로 자연 리셋. */}
+          {activeTag && <input type="hidden" name="tag" value={activeTag} />}
           <button
             type="submit"
             className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -227,6 +253,51 @@ export default async function Home({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* NOTE: 페이지네이션 — 결과 1개 페이지 이하면 표시 X. 이전/다음 + N/M 표기.
+            Server Component라 Link 클릭이 곧 새 요청. 스크롤 자동 상단. */}
+        {totalPages > 1 && (
+          <nav
+            aria-label="페이지네이션"
+            className="mt-6 flex items-center justify-center gap-3 text-sm"
+          >
+            {page > 1 ? (
+              <Link
+                href={hrefForPage(page - 1)}
+                className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                rel="prev"
+              >
+                ← 이전
+              </Link>
+            ) : (
+              <span className="rounded-md px-3 py-1.5 text-zinc-400 dark:text-zinc-600">
+                ← 이전
+              </span>
+            )}
+            <span
+              className="text-zinc-700 dark:text-zinc-300"
+              aria-current="page"
+            >
+              {page} / {totalPages}
+              <span className="ml-2 text-xs text-zinc-500 dark:text-zinc-400">
+                (전체 {total}개)
+              </span>
+            </span>
+            {page < totalPages ? (
+              <Link
+                href={hrefForPage(page + 1)}
+                className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                rel="next"
+              >
+                다음 →
+              </Link>
+            ) : (
+              <span className="rounded-md px-3 py-1.5 text-zinc-400 dark:text-zinc-600">
+                다음 →
+              </span>
+            )}
+          </nav>
         )}
       </main>
     </div>
