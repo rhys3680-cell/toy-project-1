@@ -2,7 +2,17 @@
 // db 클라이언트가 server-only이므로 transitively 안전하긴 하지만,
 // 레이어 경계를 명시적으로 표시. AGENTS.md §Layering, docs/10.
 import "server-only";
-import { and, desc, eq, exists, like, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  count,
+  desc,
+  eq,
+  exists,
+  like,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import { db } from "./client";
 import { bookmarks, bookmarkTags, tags, type Bookmark } from "./schema";
 
@@ -13,10 +23,16 @@ export type BookmarkWithTags = Bookmark & { tags: string[] };
 const SEARCH_QUERY_MAX = 100;
 const TAG_NAME_MAX = 50;
 
+export const DEFAULT_PAGE_SIZE = 20;
+
 export type ListBookmarksOpts = {
   query?: string;
   tag?: string;
+  page?: number;
+  pageSize?: number;
 };
+
+export type FilterOpts = Pick<ListBookmarksOpts, "query" | "tag">;
 
 // NOTE: v1 검색 정책 (docs/13 Q13) — LIKE '%q%'. 데이터 적은 v1엔 충분.
 // 1000건 초과 또는 v3+에서 FTS5로 진화 (docs/13 §5.7).
@@ -63,11 +79,31 @@ function tagClause(rawTag: string, userId: string) {
   );
 }
 
+// NOTE: WHERE 절 빌드를 listBookmarks/countBookmarks 둘 다에서 재사용.
+// 같은 필터 적용해야 페이지 수와 페이지 행이 정합. 분리 시 미세 함정 (필터 누락
+// 등) 차단.
+function buildWhere(userId: string, opts: FilterOpts): SQL {
+  const trimmedQuery = opts.query?.trim().slice(0, SEARCH_QUERY_MAX) ?? "";
+  const trimmedTag =
+    opts.tag?.trim().slice(0, TAG_NAME_MAX).toLowerCase() ?? "";
+
+  // NOTE: drizzle의 or/and가 빈 인자에 undefined 반환 가능 → SQL로 명시.
+  // 우리 호출은 항상 인자 있어 실제론 undefined 안 됨 (! 단언 안전).
+  const conditions: SQL[] = [eq(bookmarks.userId, userId)];
+  if (trimmedQuery.length > 0) conditions.push(searchClause(trimmedQuery)!);
+  if (trimmedTag.length > 0) conditions.push(tagClause(trimmedTag, userId));
+
+  return and(...conditions)!;
+}
+
 // NOTE: 인증 도입으로 userId 필수 인자화. AGENTS.md §Server Actions
 // "Filter every query by user_id (IDOR defense)" 정책 적용. 호출자(Server Component
 // /Action)가 session.user.id를 명시 전달 — 실수로 누락 시 컴파일 에러.
 //
 // opts 객체 — v2 이후 필터 추가 시 시그니처 안정. (이전엔 query: string 단일 인자)
+//
+// 페이징: page는 1부터, pageSize는 한 페이지 행 수. OFFSET/LIMIT 패턴.
+// docs/13 §5.7 — 데이터 적은 v1엔 OFFSET 충분. 1만 행 넘으면 cursor (v3+).
 //
 // Drizzle Relational Queries (db.query.bookmarks.findMany with: { ... }) 사용 —
 // bookmarks N개에 대해 태그 N번 SELECT하지 않고 한 번에 묶어 가져옴 (N+1 회피).
@@ -76,18 +112,14 @@ export async function listBookmarks(
   userId: string,
   opts: ListBookmarksOpts = {},
 ): Promise<BookmarkWithTags[]> {
-  const trimmedQuery = opts.query?.trim().slice(0, SEARCH_QUERY_MAX) ?? "";
-  const trimmedTag = opts.tag?.trim().slice(0, TAG_NAME_MAX).toLowerCase() ?? "";
-
-  // NOTE: drizzle의 or/and가 빈 인자에 undefined 반환 가능 → SQL로 명시.
-  // 우리 호출은 항상 인자 있어 실제론 undefined 안 됨 (! 단언 안전).
-  const conditions: SQL[] = [eq(bookmarks.userId, userId)];
-  if (trimmedQuery.length > 0) conditions.push(searchClause(trimmedQuery)!);
-  if (trimmedTag.length > 0) conditions.push(tagClause(trimmedTag, userId));
+  const page = Math.max(1, opts.page ?? 1);
+  const pageSize = Math.max(1, opts.pageSize ?? DEFAULT_PAGE_SIZE);
 
   const rows = await db.query.bookmarks.findMany({
-    where: and(...conditions),
+    where: buildWhere(userId, opts),
     orderBy: [desc(bookmarks.createdAt)],
+    limit: pageSize,
+    offset: (page - 1) * pageSize,
     with: {
       bookmarkTags: {
         with: {
@@ -105,6 +137,22 @@ export async function listBookmarks(
     ...bookmark,
     tags: links.map((bt) => bt.tag.name).sort((a, b) => a.localeCompare(b)),
   }));
+}
+
+// NOTE: 페이징 UI에 필요한 *총 개수*. listBookmarks와 같은 WHERE 절 재사용.
+// 별도 함수 — 호출자가 Promise.all로 list/count 병렬 가능. 리턴 타입 단순화.
+//
+// SQL: `SELECT count(*) FROM bookmarks WHERE ...`. 우리 v1엔 데이터 적어 부담 없음.
+// 1만 행 + 깊은 페이지에서 count 자체가 비싸지면 운영 단계에 캐싱/근사값 검토.
+export async function countBookmarks(
+  userId: string,
+  opts: FilterOpts = {},
+): Promise<number> {
+  const [row] = await db
+    .select({ value: count() })
+    .from(bookmarks)
+    .where(buildWhere(userId, opts));
+  return row?.value ?? 0;
 }
 
 // NOTE: boolean 필드 토글. WHERE에 user_id 명시 (IDOR 방어, delete와 같은 패턴).
