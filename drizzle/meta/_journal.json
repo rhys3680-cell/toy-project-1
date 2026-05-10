@@ -36,6 +36,13 @@
       "when": 1778307149041,
       "tag": "0004_add_user_id_fk_cascade",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1778399915135,
+      "tag": "0005_add_bookmark_flags",
+      "breakpoints": true
     }
   ]
 }

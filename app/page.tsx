@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { listBookmarks } from "@/lib/db/queries";
 import { DeleteButton } from "./bookmarks/delete-button";
+import { ReadButton, StarButton } from "./bookmarks/flag-button";
 import { SignOutButton } from "./sign-out-button";
 
 export default async function Home({
@@ -151,7 +152,11 @@ export default async function Home({
             {items.map((b) => (
               <li
                 key={b.id}
-                className="rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                className={
+                  b.isRead
+                    ? "rounded-md border border-zinc-200 bg-white p-4 opacity-60 dark:border-zinc-800 dark:bg-zinc-900"
+                    : "rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                }
               >
                 <div className="flex items-start gap-4">
                   {b.image && (
@@ -211,7 +216,13 @@ export default async function Home({
                       {b.createdAt.toLocaleString("ko-KR")}
                     </p>
                   </div>
-                  <DeleteButton id={b.id} />
+                  <div className="flex flex-col items-end gap-2">
+                    <div className="flex items-center gap-2">
+                      <StarButton id={b.id} initial={b.isStarred} />
+                      <ReadButton id={b.id} initial={b.isRead} />
+                    </div>
+                    <DeleteButton id={b.id} />
+                  </div>
                 </div>
               </li>
             ))}

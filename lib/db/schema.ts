@@ -27,6 +27,13 @@ export const bookmarks = sqliteTable("bookmarks", {
   title: text("title"),
   description: text("description"),
   image: text("image"),
+  // NOTE: v2 — 즐겨찾기/읽음 토글. mode "boolean"은 SQLite INTEGER 0/1 ↔ JS boolean
+  // 자동 변환. NOT NULL + DEFAULT false로 기존 데이터에 자동 채움 (ALTER ADD COLUMN
+  // 시 모든 기존 행이 default 가짐).
+  isStarred: integer("is_starred", { mode: "boolean" })
+    .notNull()
+    .default(false),
+  isRead: integer("is_read", { mode: "boolean" }).notNull().default(false),
   // NOTE: mode "timestamp" — Drizzle이 Date ↔ unix epoch(sec) 자동 변환.
   // SQLite엔 DATE 타입 없어 INTEGER가 가장 컴팩트. docs/14 §10.2.
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),

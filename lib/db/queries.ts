@@ -106,3 +106,28 @@ export async function listBookmarks(
     tags: links.map((bt) => bt.tag.name).sort((a, b) => a.localeCompare(b)),
   }));
 }
+
+// NOTE: boolean 필드 토글. WHERE에 user_id 명시 (IDOR 방어, delete와 같은 패턴).
+// 반환값은 새 상태 — Server Action에서 클라이언트 응답에 활용 가능.
+// 행이 없으면 (다른 사용자 북마크 또는 존재 X) returning이 빈 배열, undefined 반환.
+async function toggleBookmarkFlag(
+  userId: string,
+  bookmarkId: string,
+  field: "isStarred" | "isRead",
+): Promise<boolean | undefined> {
+  const column = bookmarks[field];
+  const [row] = await db
+    .update(bookmarks)
+    .set({ [field]: sql`NOT ${column}` })
+    .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)))
+    .returning({ value: column });
+  return row?.value;
+}
+
+export function toggleStar(userId: string, bookmarkId: string) {
+  return toggleBookmarkFlag(userId, bookmarkId, "isStarred");
+}
+
+export function toggleRead(userId: string, bookmarkId: string) {
+  return toggleBookmarkFlag(userId, bookmarkId, "isRead");
+}
