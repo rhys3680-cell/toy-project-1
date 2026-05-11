@@ -22,6 +22,9 @@ import {
   type Bookmark,
   type Collection,
 } from "./schema";
+// NOTE: drizzle의 isNull은 NULL 매치 전용 헬퍼. eq(col, null)은 SQL 표준상
+// 항상 false (NULL ≠ NULL — docs/08 §5)이므로 isNull/isNotNull로 명시.
+import { isNull } from "drizzle-orm";
 
 // NOTE: 카드에 표시할 형태 — bookmark + 태그 이름 배열.
 // DB 모델(bookmark_tags 조인 행 list)과 분리해 UI 친화적 형태로 평탄화.
@@ -35,11 +38,17 @@ export const DEFAULT_PAGE_SIZE = 20;
 export type ListBookmarksOpts = {
   query?: string;
   tag?: string;
+  // NOTE: 컬렉션 필터 — v3 PR3에서 /collections/[id] 페이지가 사용.
+  //   undefined: 필터 없음 (모든 북마크)
+  //   string  : 해당 컬렉션 소속만
+  //   null    : 미분류 (collection_id IS NULL) — eq(col, null)은 SQL 표준상
+  //             항상 false라 isNull()로 명시. docs/08 §5.
+  collectionId?: string | null;
   page?: number;
   pageSize?: number;
 };
 
-export type FilterOpts = Pick<ListBookmarksOpts, "query" | "tag">;
+export type FilterOpts = Pick<ListBookmarksOpts, "query" | "tag" | "collectionId">;
 
 // NOTE: v1 검색 정책 (docs/13 Q13) — LIKE '%q%'. 데이터 적은 v1엔 충분.
 // 1000건 초과 또는 v3+에서 FTS5로 진화 (docs/13 §5.7).
@@ -99,6 +108,13 @@ function buildWhere(userId: string, opts: FilterOpts): SQL {
   const conditions: SQL[] = [eq(bookmarks.userId, userId)];
   if (trimmedQuery.length > 0) conditions.push(searchClause(trimmedQuery)!);
   if (trimmedTag.length > 0) conditions.push(tagClause(trimmedTag, userId));
+  // NOTE: collectionId === null → "미분류"만, string → 그 컬렉션 소속만.
+  // undefined일 땐 분기 안 함 = 컬렉션 필터 미적용.
+  if (opts.collectionId === null) {
+    conditions.push(isNull(bookmarks.collectionId));
+  } else if (typeof opts.collectionId === "string") {
+    conditions.push(eq(bookmarks.collectionId, opts.collectionId));
+  }
 
   return and(...conditions)!;
 }
