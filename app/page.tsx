@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   countBookmarks,
   DEFAULT_PAGE_SIZE,
@@ -104,14 +105,14 @@ export default async function Home({
         {/* NOTE: GET 폼 + URL 쿼리 파라미터 — JS 없이도 동작, 새로고침/공유/뒤로가기에 상태 보존.
             v2 로드맵 "URL 쿼리로 필터 상태 동기화"의 첫 적용. */}
         <form method="GET" action="/" className="mb-6 flex gap-2">
-          <input
+          <Input
             id="search"
             type="search"
             name="q"
             defaultValue={query}
             placeholder="제목·URL·태그로 검색"
             maxLength={100}
-            className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500"
+            className="flex-1"
           />
           {/* NOTE: hidden tag — 검색 submit 시 활성 태그 필터 보존. page는 의도적
               으로 빠뜨림 → 검색하면 1페이지로 자연 리셋. */}
