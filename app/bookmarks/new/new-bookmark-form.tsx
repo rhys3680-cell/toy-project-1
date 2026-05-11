@@ -5,6 +5,8 @@ import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { createBookmark, type CreateBookmarkState } from "./actions";
 
 // NOTE: 새 북마크 폼 — Server Action을 useActionState로 감쌈.
@@ -37,37 +39,27 @@ export function NewBookmarkForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-3">
-      <label
-        htmlFor="url"
-        className="text-sm font-medium text-zinc-900 dark:text-zinc-100"
-      >
-        URL
-      </label>
-      <input
+      <Label htmlFor="url">URL</Label>
+      <Input
         id="url"
         name="url"
         type="url"
         required
         placeholder="https://example.com"
         maxLength={2048}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500"
       />
 
-      <label
-        htmlFor="tags"
-        className="mt-2 text-sm font-medium text-zinc-900 dark:text-zinc-100"
-      >
+      <Label htmlFor="tags" className="mt-2">
         태그
-      </label>
-      <input
+      </Label>
+      <Input
         id="tags"
         name="tags"
         type="text"
         placeholder="react, typescript, nextjs"
         maxLength={500}
-        className="rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:placeholder:text-zinc-500"
       />
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-muted-foreground">
         쉼표로 구분. 비워둬도 됩니다.
       </p>
 
