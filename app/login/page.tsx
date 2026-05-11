@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -19,23 +20,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center bg-zinc-50 px-6 dark:bg-zinc-950">
-      <div className="flex w-full max-w-sm flex-col items-center gap-6 rounded-md border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Bookmark Manager
-        </h1>
-        <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
-          GitHub 계정으로 로그인하면 자기 북마크만 보입니다.
-        </p>
-        <Button
-          type="button"
-          onClick={onSignIn}
-          disabled={pending}
-          className="w-full"
-        >
-          {pending ? "이동 중…" : "GitHub으로 로그인"}
-        </Button>
-      </div>
+    <div className="flex flex-1 flex-col items-center justify-center bg-background px-6">
+      <Card className="w-full max-w-sm">
+        <CardContent className="flex flex-col items-center gap-6 p-8">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Bookmark Manager
+          </h1>
+          <p className="text-center text-sm text-muted-foreground">
+            GitHub 계정으로 로그인하면 자기 북마크만 보입니다.
+          </p>
+          <Button
+            type="button"
+            onClick={onSignIn}
+            disabled={pending}
+            className="w-full"
+          >
+            {pending ? "이동 중…" : "GitHub으로 로그인"}
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
