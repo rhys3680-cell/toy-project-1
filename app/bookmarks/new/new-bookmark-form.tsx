@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { CollectionWithCount } from "@/lib/db/queries";
 import { createBookmark, type CreateBookmarkState } from "./actions";
 
 // NOTE: 새 북마크 폼 — Server Action을 useActionState로 감쌈.
@@ -25,7 +26,11 @@ function SubmitButton() {
   );
 }
 
-export function NewBookmarkForm() {
+type Props = {
+  collections: CollectionWithCount[];
+};
+
+export function NewBookmarkForm({ collections }: Props) {
   const [state, formAction] = useActionState<CreateBookmarkState, FormData>(
     createBookmark,
     null,
@@ -62,6 +67,31 @@ export function NewBookmarkForm() {
       <p className="text-xs text-muted-foreground">
         쉼표로 구분. 비워둬도 됩니다.
       </p>
+
+      <Label htmlFor="collectionId" className="mt-2">
+        컬렉션
+      </Label>
+      {/* NOTE: shadcn Select 미설치 — native select로 진행. PR2 범위 폭증 회피.
+          Tailwind 토큰으로 Input과 시각 정합 맞춤. 향후 shadcn Select 도입은 별도 PR.
+          빈 옵션의 value=""는 createBookmark에서 null로 정규화되어 "미분류"로 저장. */}
+      <select
+        id="collectionId"
+        name="collectionId"
+        defaultValue=""
+        className="border-input bg-transparent focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+      >
+        <option value="">(미분류)</option>
+        {collections.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
+      {collections.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          아직 컬렉션이 없습니다. 비워두면 미분류로 저장됩니다.
+        </p>
+      )}
 
       <div className="mt-2 flex gap-2">
         <SubmitButton />
