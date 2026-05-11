@@ -75,6 +75,26 @@ export const bookmarkTags = sqliteTable(
   (t) => [primaryKey({ columns: [t.bookmarkId, t.tagId] })],
 );
 
+// NOTE: v3 — 북마크 그룹핑 폴더. Q2 결정 (2026-05-12, docs/13 §1.3 Q2):
+// bookmark ↔ collection = 1:N. 다중 분류는 태그가 담당 (수평 분류 vs 수직 그룹).
+// id는 UUID (외부 노출 — /collections/[id] 동적 라우팅).
+// (user_id, name) UNIQUE — tags 패턴 그대로, 동명 폴더 차단.
+export const collections = sqliteTable(
+  "collections",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [
+    uniqueIndex("collections_user_id_name_unique").on(t.userId, t.name),
+  ],
+);
+
 // NOTE: relations()는 Drizzle Relational Queries(`db.query.bookmarks.findMany({ with: { tags: ... } })`)
 // 활성화. 단순 select/join에는 불필요하지만 with 키워드로 N+1 없이 가져올 때 필수.
 // docs/12 등에서 relational query 패턴 사용 시 이 정의가 진입점.
@@ -84,6 +104,10 @@ export const bookmarksRelations = relations(bookmarks, ({ many }) => ({
 
 export const tagsRelations = relations(tags, ({ many }) => ({
   bookmarkTags: many(bookmarkTags),
+}));
+
+export const collectionsRelations = relations(collections, ({ many }) => ({
+  bookmarks: many(bookmarks),
 }));
 
 export const bookmarkTagsRelations = relations(bookmarkTags, ({ one }) => ({
@@ -102,3 +126,5 @@ export type NewBookmark = typeof bookmarks.$inferInsert;
 export type Tag = typeof tags.$inferSelect;
 export type NewTag = typeof tags.$inferInsert;
 export type BookmarkTag = typeof bookmarkTags.$inferSelect;
+export type Collection = typeof collections.$inferSelect;
+export type NewCollection = typeof collections.$inferInsert;
