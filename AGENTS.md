@@ -48,7 +48,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 These are intentionally undecided. Don't pick them without raising the question:
 
-- Q2 — bookmark ↔ collection cardinality (M:N vs 1:N) — decide at v3
 - Q7 — share link permissions detail — decide at v4
 - Q8 — `updated_at` column — decide at v2
 - Q10 — user memo column — decide at v2~v3
