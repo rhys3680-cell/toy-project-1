@@ -9,6 +9,7 @@
 // Next.js docs/01-app/01-getting-started/10-error-handling 참조.
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 export default function Error({
   error,
@@ -23,23 +24,25 @@ export default function Error({
   }, [error]);
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-zinc-50 px-6 dark:bg-zinc-950">
-      <div className="flex max-w-md flex-col items-center gap-4 rounded-md border border-zinc-200 bg-white p-8 text-center dark:border-zinc-800 dark:bg-zinc-900">
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-          잠시 문제가 있었어요
-        </h1>
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">
-          예기치 않은 오류가 발생했습니다. 다시 시도해 보세요.
-        </p>
-        {error.digest && (
-          <p className="text-xs text-zinc-400 dark:text-zinc-500">
-            error id: {error.digest}
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 bg-background px-6">
+      <Card className="max-w-md">
+        <CardContent className="flex flex-col items-center gap-4 p-8 text-center">
+          <h1 className="text-xl font-semibold text-foreground">
+            잠시 문제가 있었어요
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            예기치 않은 오류가 발생했습니다. 다시 시도해 보세요.
           </p>
-        )}
-        <Button type="button" onClick={reset}>
-          다시 시도
-        </Button>
-      </div>
+          {error.digest && (
+            <p className="text-xs text-muted-foreground">
+              error id: {error.digest}
+            </p>
+          )}
+          <Button type="button" onClick={reset}>
+            다시 시도
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
