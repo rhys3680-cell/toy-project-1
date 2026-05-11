@@ -1,0 +1,57 @@
+# NOTE: GitHub Actions CI.
+#
+# 역할: 타입 / 린트 / vitest. Vercel과 *겹치지 않는 영역*.
+#   - Vercel은 build + deploy 담당 (CD)
+#   - GitHub Actions는 머지 *전* PR 단계 차단 (CI)
+#   - 빌드는 중복 회피 — Vercel이 처리
+#
+# 브랜치 보호와 결합 권장:
+#   GitHub → Settings → Branches → main rule →
+#   Require status checks to pass before merging → "CI" job 선택
+#   → 통과 안 하면 머지 버튼 비활성
+#
+# 자세한 결정 흐름은 docs/23-git-strategy.md.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# NOTE: 같은 브랜치에 여러 push 시 이전 실행 취소 — 비용 절감 + 마지막 commit만 검증.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: Type / Lint / Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        # NOTE: packageManager 필드 (package.json)를 자동 인식 — 버전 명시 불필요.
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm tsc --noEmit
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test:run
