@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useEffect } from "react";
 import { useFormStatus } from "react-dom";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { createBookmark, type CreateBookmarkState } from "./actions";
 
 // NOTE: 새 북마크 폼 — Server Action을 useActionState로 감쌈.
@@ -16,13 +17,9 @@ import { createBookmark, type CreateBookmarkState } from "./actions";
 function SubmitButton() {
   const { pending } = useFormStatus();
   return (
-    <button
-      type="submit"
-      disabled={pending}
-      className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-    >
+    <Button type="submit" disabled={pending}>
       {pending ? "저장 중…" : "저장"}
-    </button>
+    </Button>
   );
 }
 
@@ -76,12 +73,9 @@ export function NewBookmarkForm() {
 
       <div className="mt-2 flex gap-2">
         <SubmitButton />
-        <Link
-          href="/"
-          className="rounded-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          취소
-        </Link>
+        <Button asChild variant="ghost">
+          <Link href="/">취소</Link>
+        </Button>
       </div>
     </form>
   );

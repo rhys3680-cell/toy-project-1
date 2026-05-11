@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
 export default function LoginPage() {
@@ -26,14 +27,14 @@ export default function LoginPage() {
         <p className="text-center text-sm text-zinc-600 dark:text-zinc-300">
           GitHub 계정으로 로그인하면 자기 북마크만 보입니다.
         </p>
-        <button
+        <Button
           type="button"
           onClick={onSignIn}
           disabled={pending}
-          className="w-full rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="w-full"
         >
           {pending ? "이동 중…" : "GitHub으로 로그인"}
-        </button>
+        </Button>
       </div>
     </div>
   );

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
+import { Button } from "@/components/ui/button";
 import {
   countBookmarks,
   DEFAULT_PAGE_SIZE,
@@ -76,12 +77,9 @@ export default async function Home({
             Bookmark Manager
           </h1>
           <div className="flex items-center gap-3">
-            <Link
-              href="/bookmarks/new"
-              className="rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              + 추가
-            </Link>
+            <Button asChild>
+              <Link href="/bookmarks/new">+ 추가</Link>
+            </Button>
             <div className="flex items-center gap-2">
               {session.user.image && (
                 // NOTE: GitHub 아바타. img 사용 이유는 OG 썸네일과 동일 — 임의 외부 도메인.
@@ -118,19 +116,11 @@ export default async function Home({
           {/* NOTE: hidden tag — 검색 submit 시 활성 태그 필터 보존. page는 의도적
               으로 빠뜨림 → 검색하면 1페이지로 자연 리셋. */}
           {activeTag && <input type="hidden" name="tag" value={activeTag} />}
-          <button
-            type="submit"
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            검색
-          </button>
+          <Button type="submit">검색</Button>
           {isFiltered && (
-            <Link
-              href="/"
-              className="rounded-md px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              초기화
-            </Link>
+            <Button asChild variant="ghost">
+              <Link href="/">초기화</Link>
+            </Button>
           )}
         </form>
 
@@ -264,17 +254,15 @@ export default async function Home({
             className="mt-6 flex items-center justify-center gap-3 text-sm"
           >
             {page > 1 ? (
-              <Link
-                href={hrefForPage(page - 1)}
-                className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                rel="prev"
-              >
-                ← 이전
-              </Link>
+              <Button asChild variant="ghost">
+                <Link href={hrefForPage(page - 1)} rel="prev">
+                  ← 이전
+                </Link>
+              </Button>
             ) : (
-              <span className="rounded-md px-3 py-1.5 text-zinc-400 dark:text-zinc-600">
+              <Button variant="ghost" disabled>
                 ← 이전
-              </span>
+              </Button>
             )}
             <span
               className="text-zinc-700 dark:text-zinc-300"
@@ -286,17 +274,15 @@ export default async function Home({
               </span>
             </span>
             {page < totalPages ? (
-              <Link
-                href={hrefForPage(page + 1)}
-                className="rounded-md px-3 py-1.5 text-zinc-700 hover:bg-zinc-200 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                rel="next"
-              >
-                다음 →
-              </Link>
+              <Button asChild variant="ghost">
+                <Link href={hrefForPage(page + 1)} rel="next">
+                  다음 →
+                </Link>
+              </Button>
             ) : (
-              <span className="rounded-md px-3 py-1.5 text-zinc-400 dark:text-zinc-600">
+              <Button variant="ghost" disabled>
                 다음 →
-              </span>
+              </Button>
             )}
           </nav>
         )}

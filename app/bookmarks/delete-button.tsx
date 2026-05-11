@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import { deleteBookmark } from "./actions";
 
 // NOTE: form action에서 onClick + try/catch로 변경 — Server Action 호출을 감싸야
@@ -31,13 +32,14 @@ export function DeleteButton({ id }: { id: string }) {
   };
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       disabled={pending}
-      className="text-xs text-zinc-500 hover:text-red-600 disabled:opacity-50 dark:text-zinc-400 dark:hover:text-red-400"
+      variant="ghost"
+      size="sm"
     >
       {pending ? "삭제 중…" : "삭제"}
-    </button>
+    </Button>
   );
 }
