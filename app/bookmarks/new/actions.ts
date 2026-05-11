@@ -6,7 +6,7 @@ import { headers } from "next/headers";
 import { and, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db/client";
-import { bookmarks, bookmarkTags, tags } from "@/lib/db/schema";
+import { bookmarks, bookmarkTags, collections, tags } from "@/lib/db/schema";
 import { fetchOgMeta } from "@/lib/og";
 import { parseTagInput } from "@/lib/tags";
 
@@ -65,6 +65,33 @@ export async function createBookmark(
   const tagNames = parseTagInput(formData.get("tags") as string | null);
   const bookmarkId = crypto.randomUUID();
 
+  // NOTE: 컬렉션 선택 — 빈 값(드롭다운 "미분류" 옵션)이면 null. v3 PR2.
+  // 다른 사용자의 컬렉션 id를 form에 박아 보내는 IDOR 시나리오 방어: userId 매치
+  // 컬렉션이 실재하는지 트랜잭션 *밖*에서 확인. 트랜잭션 안에서 확인하지 않는 이유:
+  //   - FK 자체가 cross-user/존재X를 막아줌 (DB 마지막 진실)
+  //   - 트랜잭션 밖 검증은 *친절한 에러 메시지*용 — 시스템 에러 대신 토스트로 변환
+  //   - race condition (검증 후 삭제)에선 FK가 발동해 시스템 에러로 떨어짐 — 드물고 허용
+  const rawCollectionId = formData.get("collectionId");
+  const collectionIdInput =
+    typeof rawCollectionId === "string" && rawCollectionId.trim().length > 0
+      ? rawCollectionId.trim()
+      : null;
+  if (collectionIdInput !== null) {
+    const [owner] = await db
+      .select({ id: collections.id })
+      .from(collections)
+      .where(
+        and(
+          eq(collections.id, collectionIdInput),
+          eq(collections.userId, userId),
+        ),
+      )
+      .limit(1);
+    if (!owner) {
+      return { error: "선택한 컬렉션을 찾을 수 없습니다." };
+    }
+  }
+
   // NOTE: 북마크 + 태그 연결을 트랜잭션으로 묶음. 중간 실패 시 부분 데이터 남지 않음.
   // 트랜잭션 안에선 db가 아닌 tx 사용 — db 쓰면 libsql이 즉시 거부 (docs/09 Phase 2-②).
   // 트랜잭션 자체 실패는 throw — error.tsx로 떨어짐 (시스템 에러 카테고리).
@@ -76,6 +103,7 @@ export async function createBookmark(
       title: meta.title,
       description: meta.description,
       image: meta.image,
+      collectionId: collectionIdInput,
       createdAt: new Date(),
     });
 
