@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -33,6 +34,8 @@ export default function RootLayout({
         {/* NOTE: sonner Toaster — 모든 페이지에서 toast() 호출 가능.
             position 우측 하단 default 유지. richColors로 success/error 색 명시. */}
         <Toaster position="bottom-right" richColors closeButton />
+        {/* NOTE: 글로벌 키보드 단축키. 자세한 건 keyboard-shortcuts.tsx 상단. */}
+        <KeyboardShortcuts />
       </body>
     </html>
   );
