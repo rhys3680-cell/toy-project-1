@@ -8,6 +8,7 @@
 // "use client" 필수: error boundary는 React Client Component만.
 // Next.js docs/01-app/01-getting-started/10-error-handling 참조.
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function Error({
   error,
@@ -35,13 +36,9 @@ export default function Error({
             error id: {error.digest}
           </p>
         )}
-        <button
-          type="button"
-          onClick={reset}
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <Button type="button" onClick={reset}>
           다시 시도
-        </button>
+        </Button>
       </div>
     </div>
   );

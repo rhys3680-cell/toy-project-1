@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
 export function SignOutButton() {
@@ -21,13 +22,14 @@ export function SignOutButton() {
   };
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onSignOut}
       disabled={pending}
-      className="text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-60 dark:text-zinc-400 dark:hover:text-zinc-50"
+      variant="ghost"
+      size="sm"
     >
       {pending ? "…" : "로그아웃"}
-    </button>
+    </Button>
   );
 }
