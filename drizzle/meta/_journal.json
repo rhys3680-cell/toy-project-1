@@ -43,6 +43,13 @@
       "when": 1778399915135,
       "tag": "0005_add_bookmark_flags",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1778513107575,
+      "tag": "0006_v3_collections",
+      "breakpoints": true
     }
   ]
 }
