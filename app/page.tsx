@@ -107,6 +107,7 @@ export default async function Home({
             v2 로드맵 "URL 쿼리로 필터 상태 동기화"의 첫 적용. */}
         <form method="GET" action="/" className="mb-6 flex gap-2">
           <input
+            id="search"
             type="search"
             name="q"
             defaultValue={query}
