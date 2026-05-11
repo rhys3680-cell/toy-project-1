@@ -34,6 +34,13 @@ export const bookmarks = sqliteTable("bookmarks", {
     .notNull()
     .default(false),
   isRead: integer("is_read", { mode: "boolean" }).notNull().default(false),
+  // NOTE: v3 — 컬렉션 소속 (Q2 1:N, docs/13 §1.3 Q2). nullable = "미분류".
+  // ON DELETE SET NULL — 폴더 삭제 시 북마크은 살아남아 "미분류"로 이동.
+  // 다른 user_id FK는 CASCADE지만 컬렉션은 "사용자가 의도로 묶은 폴더"라
+  // 본질적 소유가 아니라는 정책 (docs/13 §6 외래키 매트릭스).
+  collectionId: text("collection_id").references(() => collections.id, {
+    onDelete: "set null",
+  }),
   // NOTE: mode "timestamp" — Drizzle이 Date ↔ unix epoch(sec) 자동 변환.
   // SQLite엔 DATE 타입 없어 INTEGER가 가장 컴팩트. docs/14 §10.2.
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
@@ -98,8 +105,12 @@ export const collections = sqliteTable(
 // NOTE: relations()는 Drizzle Relational Queries(`db.query.bookmarks.findMany({ with: { tags: ... } })`)
 // 활성화. 단순 select/join에는 불필요하지만 with 키워드로 N+1 없이 가져올 때 필수.
 // docs/12 등에서 relational query 패턴 사용 시 이 정의가 진입점.
-export const bookmarksRelations = relations(bookmarks, ({ many }) => ({
+export const bookmarksRelations = relations(bookmarks, ({ many, one }) => ({
   bookmarkTags: many(bookmarkTags),
+  collection: one(collections, {
+    fields: [bookmarks.collectionId],
+    references: [collections.id],
+  }),
 }));
 
 export const tagsRelations = relations(tags, ({ many }) => ({
