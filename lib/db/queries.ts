@@ -14,7 +14,14 @@ import {
   type SQL,
 } from "drizzle-orm";
 import { db } from "./client";
-import { bookmarks, bookmarkTags, tags, type Bookmark } from "./schema";
+import {
+  bookmarks,
+  bookmarkTags,
+  collections,
+  tags,
+  type Bookmark,
+  type Collection,
+} from "./schema";
 
 // NOTE: 카드에 표시할 형태 — bookmark + 태그 이름 배열.
 // DB 모델(bookmark_tags 조인 행 list)과 분리해 UI 친화적 형태로 평탄화.
@@ -178,4 +185,143 @@ export function toggleStar(userId: string, bookmarkId: string) {
 
 export function toggleRead(userId: string, bookmarkId: string) {
   return toggleBookmarkFlag(userId, bookmarkId, "isRead");
+}
+
+// === Collections (v3 PR2) =====================================================
+
+const COLLECTION_NAME_MAX = 80;
+const COLLECTION_DESC_MAX = 500;
+
+export type CollectionWithCount = Collection & { bookmarkCount: number };
+
+// NOTE: 사용자 컬렉션 목록 — 북마크 수 포함. 드롭다운/페이지 둘 다에서 쓸 수 있게
+// count를 한 번에 묶음. LEFT JOIN + GROUP BY로 빈 컬렉션도 count=0으로 등장.
+// 정렬: 최신 생성순 (createdAt DESC) — 사용자가 방금 만든 폴더를 위에 보고 싶을 가능성.
+// 미래에 사용자별 정렬 (`sort_order` 컬럼) 도입 시 ORDER BY 교체.
+export async function listCollections(
+  userId: string,
+): Promise<CollectionWithCount[]> {
+  const rows = await db
+    .select({
+      id: collections.id,
+      userId: collections.userId,
+      name: collections.name,
+      description: collections.description,
+      createdAt: collections.createdAt,
+      bookmarkCount: count(bookmarks.id),
+    })
+    .from(collections)
+    .leftJoin(bookmarks, eq(bookmarks.collectionId, collections.id))
+    .where(eq(collections.userId, userId))
+    .groupBy(collections.id)
+    .orderBy(desc(collections.createdAt));
+  return rows;
+}
+
+// NOTE: 컬렉션 단건 조회 — /collections/[id] 페이지가 PR3에서 쓸 예정.
+// IDOR 방어: id + userId 동시 매치. 다른 사용자의 컬렉션 id를 알아도 못 봄.
+export async function getCollection(
+  userId: string,
+  collectionId: string,
+): Promise<Collection | undefined> {
+  const [row] = await db
+    .select()
+    .from(collections)
+    .where(
+      and(eq(collections.id, collectionId), eq(collections.userId, userId)),
+    )
+    .limit(1);
+  return row;
+}
+
+export type CreateCollectionInput = {
+  name: string;
+  description?: string | null;
+};
+
+// NOTE: 컬렉션 생성. name은 trim + 길이 검증. UNIQUE(user_id, name) 위반 시
+// DB가 거부 → 호출자가 사용자 메시지로 변환. INTEGRITY는 DB가 마지막 진실.
+// description은 nullable — 빈 문자열은 null로 정규화 (DB에 의미 없는 빈 문자열 안 박힘).
+export async function createCollection(
+  userId: string,
+  input: CreateCollectionInput,
+): Promise<Collection> {
+  const name = input.name.trim().slice(0, COLLECTION_NAME_MAX);
+  if (name.length === 0) {
+    throw new Error("collection name is required");
+  }
+  const description = input.description?.trim().slice(0, COLLECTION_DESC_MAX);
+  const id = crypto.randomUUID();
+  const [row] = await db
+    .insert(collections)
+    .values({
+      id,
+      userId,
+      name,
+      description: description && description.length > 0 ? description : null,
+      createdAt: new Date(),
+    })
+    .returning();
+  return row!;
+}
+
+// NOTE: 이름 변경. UNIQUE 위반 → DB throw → 호출자가 사용자 메시지로 변환.
+// returning으로 갱신된 행 반환, 다른 사용자의 컬렉션이거나 존재 X면 undefined.
+export async function renameCollection(
+  userId: string,
+  collectionId: string,
+  rawName: string,
+): Promise<Collection | undefined> {
+  const name = rawName.trim().slice(0, COLLECTION_NAME_MAX);
+  if (name.length === 0) {
+    throw new Error("collection name is required");
+  }
+  const [row] = await db
+    .update(collections)
+    .set({ name })
+    .where(
+      and(eq(collections.id, collectionId), eq(collections.userId, userId)),
+    )
+    .returning();
+  return row;
+}
+
+// NOTE: 컬렉션 삭제. ON DELETE SET NULL이라 안에 있던 북마크은 살아남아 "미분류"로
+// 이동. docs/13 §1.3 Q2 / §6 외래키 매트릭스. WHERE에 userId 명시 (IDOR 방어).
+// returning으로 *실제 삭제 행 수*를 알 수 있으나, Server Action에선 단순히
+// revalidatePath만 하면 되니 반환값 활용은 호출자 재량.
+export async function deleteCollection(
+  userId: string,
+  collectionId: string,
+): Promise<boolean> {
+  const rows = await db
+    .delete(collections)
+    .where(
+      and(eq(collections.id, collectionId), eq(collections.userId, userId)),
+    )
+    .returning({ id: collections.id });
+  return rows.length > 0;
+}
+
+// NOTE: 북마크의 컬렉션 소속 변경. collectionId === null이면 "미분류"로 이동.
+// IDOR 방어 두 층:
+//   1) bookmark가 userId 소유여야 함 (UPDATE WHERE)
+//   2) collectionId가 주어졌으면 그 컬렉션도 userId 소유여야 함 — 별도 SELECT로 확인.
+// 두 번째 가드가 없으면 자기 북마크을 *남의 컬렉션 id*에 박을 수 있음. FK는 막아주지만
+// 같은 사용자 가정만 깨지면 안 됨. 작은 비용으로 의도 명시.
+export async function assignBookmarkCollection(
+  userId: string,
+  bookmarkId: string,
+  collectionId: string | null,
+): Promise<boolean> {
+  if (collectionId !== null) {
+    const owner = await getCollection(userId, collectionId);
+    if (!owner) return false;
+  }
+  const rows = await db
+    .update(bookmarks)
+    .set({ collectionId })
+    .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)))
+    .returning({ id: bookmarks.id });
+  return rows.length > 0;
 }
