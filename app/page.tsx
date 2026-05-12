@@ -5,13 +5,12 @@ import { auth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SiteHeader } from "@/components/site-header";
+import { BookmarkCard } from "@/components/bookmark-card";
 import {
   countBookmarks,
   DEFAULT_PAGE_SIZE,
   listBookmarks,
 } from "@/lib/db/queries";
-import { DeleteButton } from "./bookmarks/delete-button";
-import { ReadButton, StarButton } from "./bookmarks/flag-button";
 
 export default async function Home({
   searchParams,
@@ -153,81 +152,12 @@ export default async function Home({
         ) : (
           <ul className="flex flex-col gap-2">
             {items.map((b) => (
-              <li
+              <BookmarkCard
                 key={b.id}
-                className={
-                  b.isRead
-                    ? "rounded-md border border-zinc-200 bg-white p-4 opacity-60 dark:border-zinc-800 dark:bg-zinc-900"
-                    : "rounded-md border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-                }
-              >
-                <div className="flex items-start gap-4">
-                  {b.image && (
-                    // NOTE: next/image 대신 <img> 사용. next/image는 도메인 화이트리스트가
-                    // 필수인데 북마크 매니저는 임의 외부 도메인을 받음 → 화이트리스트 부적합.
-                    // og:image URL은 lib/og.ts의 validateImageUrl에서 http/https 검증 끝.
-                    // referrerPolicy="no-referrer" — 외부 사이트에 우리 페이지 노출 최소화.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={b.image}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="h-20 w-32 flex-none rounded border border-zinc-200 bg-zinc-100 object-cover dark:border-zinc-800 dark:bg-zinc-800"
-                    />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <a
-                      href={b.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block truncate text-sm font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                    >
-                      {b.title ?? b.url}
-                    </a>
-                    {b.description && (
-                      <p className="mt-1 line-clamp-2 text-xs text-zinc-600 dark:text-zinc-300">
-                        {b.description}
-                      </p>
-                    )}
-                    <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                      {b.url}
-                    </p>
-                    {b.tags.length > 0 && (
-                      <ul className="mt-2 flex flex-wrap gap-1">
-                        {b.tags.map((t) => {
-                          const isActive = t === activeTag;
-                          return (
-                            <li key={t}>
-                              <Link
-                                href={hrefForTag(t)}
-                                aria-current={isActive ? "true" : undefined}
-                                className={
-                                  isActive
-                                    ? "rounded bg-zinc-900 px-2 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900"
-                                    : "rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                                }
-                              >
-                                {t}
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                    <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                      {b.createdAt.toLocaleString("ko-KR")}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <div className="flex items-center gap-2">
-                      <StarButton id={b.id} initial={b.isStarred} />
-                      <ReadButton id={b.id} initial={b.isRead} />
-                    </div>
-                    <DeleteButton id={b.id} />
-                  </div>
-                </div>
-              </li>
+                bookmark={b}
+                activeTag={activeTag}
+                hrefForTag={hrefForTag}
+              />
             ))}
           </ul>
         )}
