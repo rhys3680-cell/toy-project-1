@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { SignOutButton } from "@/app/sign-out-button";
 
 // NOTE: 사이트 공통 헤더. 두 가지 자리 변동:
@@ -6,7 +7,9 @@ import { SignOutButton } from "@/app/sign-out-button";
 // composition으로 풂 — props로 받기보다 children으로 받음 (docs/25 §7.3).
 //
 // UserMenu (아바타 + 이름 + 로그아웃)는 항상 같으니 헤더 내부에 박힘.
-// v3에 컬렉션 페이지 추가 시 *세 번째 복사* 없이 이 컴포넌트 그대로 사용.
+// v3 PR3에 컬렉션 nav 추가 — 제목과 액션 사이의 *navigation 영역*. 모든
+// 페이지에서 같은 두 링크가 보임 (홈/컬렉션). 두 자리 외 nav가 더 필요해지면
+// 별도 SiteNav 컴포넌트로 추출.
 
 type SiteHeaderProps = {
   user: {
@@ -23,8 +26,22 @@ type SiteHeaderProps = {
 export function SiteHeader({ user, title, actions }: SiteHeaderProps) {
   return (
     <header className="border-b border-border">
-      <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-6 py-4">
+      <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-6 py-4">
         {title}
+        <nav className="flex flex-1 items-center gap-4 text-sm">
+          <Link
+            href="/"
+            className="text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground"
+          >
+            홈
+          </Link>
+          <Link
+            href="/collections"
+            className="text-zinc-600 hover:text-foreground dark:text-zinc-400 dark:hover:text-foreground"
+          >
+            컬렉션
+          </Link>
+        </nav>
         <div className="flex items-center gap-3">
           {actions}
           <UserMenu user={user} />
