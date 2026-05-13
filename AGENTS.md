@@ -50,7 +50,6 @@ These are intentionally undecided. Don't pick them without raising the question:
 
 - Q7 — share link permissions detail — decide at v4
 - Q8 — `updated_at` column — decide at v2
-- Q10 — user memo column — decide at v2~v3
 - Q12 — tag color/icon — decide at v3+
 
 ## Known traps to avoid
