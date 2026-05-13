@@ -65,6 +65,18 @@ export async function createBookmark(
   const tagNames = parseTagInput(formData.get("tags") as string | null);
   const bookmarkId = crypto.randomUUID();
 
+  // NOTE: 큐레이터 메모 (Q10, v4). plain text, 길이 ~2000자 제한 (앱 단).
+  // 빈 문자열은 null로 정규화 — 의미 없는 빈 메모가 DB에 박히지 않도록.
+  // 너무 길면 사용자에게 안내 (HTML5 maxLength 검증 우회 가능 → 서버 재검증).
+  const rawNote = formData.get("note");
+  const noteInput =
+    typeof rawNote === "string" && rawNote.trim().length > 0
+      ? rawNote.trim()
+      : null;
+  if (noteInput !== null && noteInput.length > 2000) {
+    return { error: "메모가 너무 깁니다. (최대 2000자)" };
+  }
+
   // NOTE: 컬렉션 선택 — 빈 값(드롭다운 "미분류" 옵션)이면 null. v3 PR2.
   // 다른 사용자의 컬렉션 id를 form에 박아 보내는 IDOR 시나리오 방어: userId 매치
   // 컬렉션이 실재하는지 트랜잭션 *밖*에서 확인. 트랜잭션 안에서 확인하지 않는 이유:
@@ -104,6 +116,7 @@ export async function createBookmark(
       description: meta.description,
       image: meta.image,
       collectionId: collectionIdInput,
+      note: noteInput,
       createdAt: new Date(),
     });
 

@@ -54,6 +54,21 @@ export function NewBookmarkForm({ collections }: Props) {
         maxLength={2048}
       />
 
+      <Label htmlFor="note" className="mt-2">
+        메모
+      </Label>
+      {/* NOTE: 큐레이터 메모 (Q10, v4). textarea — plain text, 줄바꿈 보존.
+          shadcn Textarea 미설치라 native + Input과 같은 토큰. maxLength는 HTML5
+          힌트일 뿐 우회 가능 → Server Action에서 2000자 재검증 (createBookmark). */}
+      <textarea
+        id="note"
+        name="note"
+        placeholder="왜 저장했나, 한국어 요약, 한 줄 평…"
+        rows={4}
+        maxLength={2000}
+        className="border-input bg-transparent focus-visible:border-ring focus-visible:ring-ring/50 flex w-full rounded-md border px-3 py-2 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+      />
+
       <Label htmlFor="tags" className="mt-2">
         태그
       </Label>
