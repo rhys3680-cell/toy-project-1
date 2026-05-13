@@ -9,6 +9,7 @@ import {
   DEFAULT_PAGE_SIZE,
   getCollection,
   listBookmarks,
+  listCollections,
 } from "@/lib/db/queries";
 import { Button } from "@/components/ui/button";
 import { RenameCollectionForm } from "./rename-collection-form";
@@ -37,9 +38,10 @@ export default async function CollectionDetailPage({
   const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
   const filterOpts = { collectionId: id, tag: activeTag };
 
-  const [items, total] = await Promise.all([
+  const [items, total, userCollections] = await Promise.all([
     listBookmarks(session.user.id, { ...filterOpts, page }),
     countBookmarks(session.user.id, filterOpts),
+    listCollections(session.user.id),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE));
@@ -125,6 +127,7 @@ export default async function CollectionDetailPage({
                 bookmark={b}
                 activeTag={activeTag}
                 hrefForTag={hrefForTag}
+                collections={userCollections}
               />
             ))}
           </ul>

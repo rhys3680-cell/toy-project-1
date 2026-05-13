@@ -10,6 +10,7 @@ import {
   countBookmarks,
   DEFAULT_PAGE_SIZE,
   listBookmarks,
+  listCollections,
 } from "@/lib/db/queries";
 
 export default async function Home({
@@ -32,11 +33,12 @@ export default async function Home({
   const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
   const filterOpts = { query, tag: activeTag };
 
-  // NOTE: list + count 병렬. 같은 buildWhere 절을 두 쿼리가 공유하니 정합.
-  // docs/21 §3 SQL 흐름에 새 쿼리 1개 추가 (count).
-  const [items, total] = await Promise.all([
+  // NOTE: list + count + collections 병렬. 같은 buildWhere 절을 list/count가 공유하니 정합.
+  // collections는 카드의 picker 옵션 — 본인 컬렉션만 (queries.ts §listCollections).
+  const [items, total, userCollections] = await Promise.all([
     listBookmarks(session.user.id, { ...filterOpts, page }),
     countBookmarks(session.user.id, filterOpts),
+    listCollections(session.user.id),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE));
@@ -157,6 +159,7 @@ export default async function Home({
                 bookmark={b}
                 activeTag={activeTag}
                 hrefForTag={hrefForTag}
+                collections={userCollections}
               />
             ))}
           </ul>
