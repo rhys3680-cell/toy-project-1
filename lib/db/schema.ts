@@ -41,6 +41,12 @@ export const bookmarks = sqliteTable("bookmarks", {
   collectionId: text("collection_id").references(() => collections.id, {
     onDelete: "set null",
   }),
+  // NOTE: v4 — 큐레이터 메모/요약 (Q10 결정 2026-05-13, docs/13 §1.3 Q10).
+  // OG description은 자동 추출이라 "원본 사이트의 설명", note는 *사용자가 직접 적은*
+  // "왜 저장했나/한국어 요약/한 줄 평". 도메인 재정의(docs/04)로 큐레이션이 본질이 되며 도입.
+  // nullable로 시작 — 기존 row 영향 0. 길이 제한 ~2000자는 앱 단(Server Action)에서.
+  // markdown 미지원 v4: plain text. 렌더 시 white-space: pre-wrap으로 줄바꿈 보존.
+  note: text("note"),
   // NOTE: mode "timestamp" — Drizzle이 Date ↔ unix epoch(sec) 자동 변환.
   // SQLite엔 DATE 타입 없어 INTEGER가 가장 컴팩트. docs/14 §10.2.
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
