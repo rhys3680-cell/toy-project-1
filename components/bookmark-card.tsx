@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DeleteButton } from "@/app/bookmarks/delete-button";
 import { ReadButton, StarButton } from "@/app/bookmarks/flag-button";
 import type { BookmarkWithTags } from "@/lib/db/queries";
+import { BookmarkNote } from "./bookmark-note";
 import { CollectionPicker } from "./collection-picker";
 
 // NOTE: 메인/컬렉션/미분류 세 페이지에서 공유. PR3에서 추출.
@@ -68,6 +69,7 @@ export function BookmarkCard({
           <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
             {b.url}
           </p>
+          <BookmarkNote bookmarkId={b.id} initialNote={b.note} />
           {b.tags.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1">
               {b.tags.map((t) => {

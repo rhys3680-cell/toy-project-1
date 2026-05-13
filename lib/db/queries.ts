@@ -203,6 +203,22 @@ export function toggleRead(userId: string, bookmarkId: string) {
   return toggleBookmarkFlag(userId, bookmarkId, "isRead");
 }
 
+// NOTE: 큐레이터 메모 업데이트 (Q10, v4). plain text, ~2000자 호출자 검증.
+// WHERE에 userId 명시 (IDOR 방어, toggle 패턴과 동일). 빈 문자열은 null로 정규화는
+// Server Action에서 — queries는 string | null 받아 그대로 set.
+export async function updateBookmarkNote(
+  userId: string,
+  bookmarkId: string,
+  note: string | null,
+): Promise<boolean> {
+  const rows = await db
+    .update(bookmarks)
+    .set({ note })
+    .where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)))
+    .returning({ id: bookmarks.id });
+  return rows.length > 0;
+}
+
 // === Collections (v3 PR2) =====================================================
 
 const COLLECTION_NAME_MAX = 80;
