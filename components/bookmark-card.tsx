@@ -2,22 +2,31 @@ import Link from "next/link";
 import { DeleteButton } from "@/app/bookmarks/delete-button";
 import { ReadButton, StarButton } from "@/app/bookmarks/flag-button";
 import type { BookmarkWithTags } from "@/lib/db/queries";
+import { CollectionPicker } from "./collection-picker";
 
 // NOTE: 메인/컬렉션/미분류 세 페이지에서 공유. PR3에서 추출.
 // 페이지마다 다른 자리는 props로 받음:
 //   - activeTag — 현재 활성 태그 (하이라이트 + aria-current)
 //   - hrefForTag — 태그 클릭 시 URL 생성 (페이지마다 query string 구성이 달라 함수로)
+//   - collections — 컬렉션 picker의 옵션. 사용자 본인 컬렉션 목록.
+//     호출자가 listCollections로 가져와 prop으로 전달 (Client Component가 DB 직접 호출 X).
 // 페이지마다 같은 자리는 내부에 박음:
-//   - Star/Read/Delete 액션 버튼
+//   - Star/Read/Delete 액션 + CollectionPicker
 //   - 카드 레이아웃, 이미지, 제목/설명, 메타
 // 동일 레이아웃을 강제해 페이지 간 시각 일관성 확보 (docs/25 §디자인 시스템 철학).
 type Props = {
   bookmark: BookmarkWithTags;
   activeTag?: string;
   hrefForTag: (tag: string) => string;
+  collections: { id: string; name: string }[];
 };
 
-export function BookmarkCard({ bookmark, activeTag, hrefForTag }: Props) {
+export function BookmarkCard({
+  bookmark,
+  activeTag,
+  hrefForTag,
+  collections,
+}: Props) {
   const b = bookmark;
   return (
     <li
@@ -90,6 +99,11 @@ export function BookmarkCard({ bookmark, activeTag, hrefForTag }: Props) {
             <StarButton id={b.id} initial={b.isStarred} />
             <ReadButton id={b.id} initial={b.isRead} />
           </div>
+          <CollectionPicker
+            bookmarkId={b.id}
+            currentCollectionId={b.collectionId}
+            collections={collections}
+          />
           <DeleteButton id={b.id} />
         </div>
       </div>
