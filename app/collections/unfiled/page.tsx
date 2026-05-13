@@ -9,6 +9,7 @@ import {
   countBookmarks,
   DEFAULT_PAGE_SIZE,
   listBookmarks,
+  listCollections,
 } from "@/lib/db/queries";
 
 // NOTE: collection_id IS NULL 북마크만 조회. /collections/[id]와 거의 같은 레이아웃이지만
@@ -28,9 +29,10 @@ export default async function UnfiledCollectionPage({
   const page = Number.isFinite(parsedPage) && parsedPage >= 1 ? parsedPage : 1;
   const filterOpts = { collectionId: null, tag: activeTag };
 
-  const [items, total] = await Promise.all([
+  const [items, total, userCollections] = await Promise.all([
     listBookmarks(session.user.id, { ...filterOpts, page }),
     countBookmarks(session.user.id, filterOpts),
+    listCollections(session.user.id),
   ]);
 
   const totalPages = Math.max(1, Math.ceil(total / DEFAULT_PAGE_SIZE));
@@ -109,6 +111,7 @@ export default async function UnfiledCollectionPage({
                 bookmark={b}
                 activeTag={activeTag}
                 hrefForTag={hrefForTag}
+                collections={userCollections}
               />
             ))}
           </ul>
